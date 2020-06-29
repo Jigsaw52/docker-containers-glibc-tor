@@ -1,0 +1,22 @@
+FROM alpine:3.12
+
+# install packages required for compilation and testing
+RUN apk update 
+RUN apk add make automake autoconf gcc libgcc libtool libevent-dev libssl1.1 musl musl-dev openssl openssl-dev libseccomp-dev zlib-dev \
+            git wget nano strace less netcat-openbsd \
+ && rm -rf /var/cache/apk/*
+
+RUN mkdir /alpine
+WORKDIR /alpine
+
+# create test directory structure
+COPY common/make_test_torrcd.sh /alpine/make_test_torrcd.sh
+RUN chmod +x /alpine/make_test_torrcd.sh \
+ && /alpine/make_test_torrcd.sh /alpine
+
+# build tor
+RUN git clone https://git.torproject.org/tor.git \
+ && cd tor \
+ && ./autogen.sh \
+ && ./configure --disable-asciidoc \
+ && make -j5

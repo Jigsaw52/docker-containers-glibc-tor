@@ -1,0 +1,36 @@
+FROM ubuntu:16.04
+
+# install packages required for compilation and testing
+RUN sed -i '/deb-src/s/^# //' /etc/apt/sources.list \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y update \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y install \
+                                              build-essential gawk bison python3 automake libseccomp-dev git wget \
+                                              strace netcat procps nano less \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y build-dep tor \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y clean \
+ && rm -rf -- /var/lib/apt/lists/*
+
+# install all supported glibc versions
+COPY common/install_glibc.sh /root/install_glibc.sh
+COPY common/run_with_glibc /usr/local/bin/run_with_glibc
+RUN chmod +x /root/install_glibc.sh \
+ && chmod +x /usr/local/bin/run_with_glibc
+RUN /root/install_glibc.sh 2.20 2.21 2.22 2.23 2.24 2.25 2.26 2.27 2.28 2.29
+
+RUN useradd -ms /bin/bash user
+USER user
+WORKDIR /home/user
+
+# create test directory structure
+COPY --chown=user common/make_test_torrcd.sh /home/user/make_test_torrcd.sh
+RUN chmod +x /home/user/make_test_torrcd.sh \
+ && /home/user/make_test_torrcd.sh /home/user
+
+# build tor - systemd support is disabled so we can run tor with gblic versions lower than the system glibc
+RUN git clone https://git.torproject.org/tor.git \
+ && cd tor \
+ && ./autogen.sh \
+ && ./configure --disable-systemd \
+ && make -j5
+
+CMD ["su", "-", "user", "-c", "/bin/bash"]

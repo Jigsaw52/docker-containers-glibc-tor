@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <glib_version> <command>"
+    exit 1
+fi
+
+export GLIBC_VERSION=$1
+shift
+SYSTEM_LIB_PATH=$(/sbin/ldconfig -v 2>/dev/null | grep -v ^$'\t' | tr -d '\n')
+LD_LIBRARY_PATH="/opt/glibc${GLIBC_VERSION}/lib:$SYSTEM_LIB_PATH" /opt/glibc${GLIBC_VERSION}/lib/ld-linux-x86-64.so.2 $@
+
+exit 0
